@@ -7,15 +7,22 @@ import argparse
 import subprocess
 import pandas as pd
 
+
 def get_batch(runner_id, lang, index_dir, data_dir):
-    
     """
         Get running or first avaliable batch name and line from whitch to start data collection 
     """
+    try:
+        df = pd.read_csv('{}/register-{}.csv'.format(data_dir, runner_id), index_col=None)
 
-    df = pd.read_csv('{}/register-{}.csv'.format(data_dir, runner_id), index_col=None)
+    except FileNotFoundError:
+        '''if csv file for current runner was not found, following block will create one and store at data_dir'''
+        column_names = ["runner_id", "status", "collected_lines_count", "batch_name"]
+        df = pd.DataFrame(columns = column_names)
+        df.to_csv('{}/register-{}.csv'.format(data_dir, runner_id), index=None)
+
     running = df[(df.runner_id == runner_id) & (df.status == 'running')]
-    
+
     if running.shape[0] != 0:
         batch_name = running.iloc[0].batch_name
         start_from = running.iloc[0].collected_lines_count
@@ -23,31 +30,32 @@ def get_batch(runner_id, lang, index_dir, data_dir):
         batch_name = get_new_batch(data_dir, index_dir, lang)
 
         start_from = 0
-        
-        df = df.append({"runner_id": runner_id, "status": 'running', "collected_lines_count": 0, "batch_name": batch_name}, ignore_index=True)
+
+        df = df.append(
+            {"runner_id": runner_id, "status": 'running', "collected_lines_count": 0, "batch_name": batch_name},
+            ignore_index=True)
         df.to_csv('{}/register-{}.csv'.format(data_dir, runner_id), index=None)
 
     return batch_name, start_from
 
 
 def get_new_batch(data_dir, index_dir, lang):
+    batch_names = [a.split('/')[-1].replace('.tar.gz', '') for a in glob('{}/{}*.tar.gz'.format(index_dir, lang))]
 
-    batch_names = [ a.split('/')[-1].replace('.tar.gz', '') for a in glob('{}/{}*.tar.gz'.format(index_dir, lang))]
-    
     dfs = []
-    
+
     for path in glob('{}/register-*.csv'.format(data_dir)):
         dfs.append(pd.read_csv(path, index_col=None))
     df_ = pd.concat(dfs)
-    
+
     avaliable_batches = list(set(batch_names) - set(df_.batch_name.values))
-    
+
     if len(avaliable_batches) == 0:
         raise Exception("No index batches left")
-    
+
     batch_name = avaliable_batches[0]
 
-    return  batch_name
+    return batch_name
 
 
 def download_and_extract_batch_file(index_file_batch_path, work_dir):
@@ -63,7 +71,6 @@ def download_and_extract_batch_file(index_file_batch_path, work_dir):
     system('rm {}/indexes/*'.format(work_dir))
 
 
-
 def download_webpage_data_as_text(line, line_index, work_dir):
     """
         Download thml data, extract and concat to single file
@@ -71,25 +78,26 @@ def download_webpage_data_as_text(line, line_index, work_dir):
 
     index = json.loads('{"url":' + line.split('{"url":')[1])
 
-    system('curl -s -r{offset}-$(({offset}+{length}-1)) https://commoncrawl.s3.amazonaws.com/{filename} > {work_dir}/tmp.warc.gz'.format(
-        offset = index['offset'], 
-        length = index['length'], 
-        filename = index['filename'], 
-        work_dir = work_dir))
-     
-    system('warcio extract --payload {work_dir}/tmp.warc.gz 0 > tmp.html'.format(work_dir = work_dir))
+    system(
+        'curl -s -r{offset}-$(({offset}+{length}-1)) https://commoncrawl.s3.amazonaws.com/{filename} > {work_dir}/tmp.warc.gz'.format(
+            offset=index['offset'],
+            length=index['length'],
+            filename=index['filename'],
+            work_dir=work_dir))
+
+    system('warcio extract --payload {work_dir}/tmp.warc.gz 0 > tmp.html'.format(work_dir=work_dir))
     system('lynx --dump {work_dir}/tmp.html > {work_dir}/text/tmp{line_index}.txt'.format(
-        work_dir = work_dir,
-        line_index = str(line_index)
+        work_dir=work_dir,
+        line_index=str(line_index)
     ))
 
-    system('rm {work_dir}/*.html'.format(work_dir = work_dir))
-    system('rm {work_dir}/*.warc.gz'.format(work_dir = work_dir))
+    system('rm {work_dir}/*.html'.format(work_dir=work_dir))
+    system('rm {work_dir}/*.warc.gz'.format(work_dir=work_dir))
 
-    system('cat {work_dir}/text/*.txt > {work_dir}/text/_tmp'.format(work_dir = work_dir))
-    system('rm {work_dir}/text/*.txt'.format(work_dir = work_dir))
-    system('mv {work_dir}/text/_tmp {work_dir}/text/extracted-{line_index}.txt'.format(work_dir = work_dir, line_index = str(line_index)))
-
+    system('cat {work_dir}/text/*.txt > {work_dir}/text/_tmp'.format(work_dir=work_dir))
+    system('rm {work_dir}/text/*.txt'.format(work_dir=work_dir))
+    system('mv {work_dir}/text/_tmp {work_dir}/text/extracted-{line_index}.txt'.format(work_dir=work_dir,
+                                                                                       line_index=str(line_index)))
 
 
 def save_data(runner_id, batch_name, data_dir, work_dir, line_index, lines_lenght, start_date, start_from):
@@ -97,26 +105,28 @@ def save_data(runner_id, batch_name, data_dir, work_dir, line_index, lines_lengh
         Save collected text and empty files
     """
 
-    passed = (datetime.now()-start_date).seconds/60
-    print(line_index, '/', lines_lenght, '    ', round(passed, 2), '/', round(passed *(lines_lenght - start_from)/(line_index - start_from), 2))
+    passed = (datetime.now() - start_date).seconds / 60
+    print(line_index, '/', lines_lenght, '    ', round(passed, 2), '/',
+          round(passed * (lines_lenght - start_from) / (line_index - start_from), 2))
     print('Saving to cloud...', str(line_index), line_index)
 
-    system('tar czf {work_dir}/text/{batch_name}-{line_index}.tar.gz --absolute-names {work_dir}/text/extracted-{line_index}.txt'.format(
-        batch_name=batch_name, 
-        line_index = str(line_index),
-        work_dir = work_dir
-    ))
+    system(
+        'tar czf {work_dir}/text/{batch_name}-{line_index}.tar.gz --absolute-names {work_dir}/text/extracted-{line_index}.txt'.format(
+            batch_name=batch_name,
+            line_index=str(line_index),
+            work_dir=work_dir
+        ))
 
     system('cp {work_dir}/text/{batch_name}-{line_index}.tar.gz {data_dir}/'.format(
-        batch_name = batch_name, 
-        line_index = str(line_index), 
-        data_dir = data_dir,
-        work_dir = work_dir
+        batch_name=batch_name,
+        line_index=str(line_index),
+        data_dir=data_dir,
+        work_dir=work_dir
     ))
-    
+
     system('rm {work_dir}/text/extracted-{line_index}.txt'.format(
-        line_index = str(line_index),
-        work_dir = work_dir
+        line_index=str(line_index),
+        work_dir=work_dir
     ))
 
     df = pd.read_csv('{}/register-{}.csv'.format(data_dir, runner_id), index_col=None)
@@ -125,13 +135,13 @@ def save_data(runner_id, batch_name, data_dir, work_dir, line_index, lines_lengh
     df.to_csv('{}/register-{}.csv'.format(data_dir, runner_id), index=None)
 
 
-
 def collect(runner_id, **kwargs):
     """
         Start data collection process
     """
-    lang, index_dir, data_dir, work_dir, save_on = kwargs["lang"], kwargs["index_dir"], kwargs["data_dir"], kwargs["work_dir"], kwargs["save_on"]
-    
+    lang, index_dir, data_dir, work_dir, save_on = kwargs["lang"], kwargs["index_dir"], kwargs["data_dir"], kwargs[
+        "work_dir"], kwargs["save_on"]
+
     system('mkdir -p {}/indexes'.format(work_dir))
     system('mkdir -p {}/text'.format(work_dir))
 
@@ -140,16 +150,16 @@ def collect(runner_id, **kwargs):
 
     system('rm -f {}/indexes.txt'.format(work_dir))
     system('rm -f {}/*warc.gz'.format(work_dir))
-    
+
     start_date = datetime.now()
-    
+
     if 'batch_name' not in kwargs:
         batch_name, start_from = get_batch(runner_id, lang, index_dir, data_dir)
     else:
         batch_name, start_from = kwargs['batch_name'], kwargs['start_from']
 
     index_file_batch_path = '{}/{}.tar.gz'.format(index_dir, batch_name)
-    
+
     download_and_extract_batch_file(index_file_batch_path, work_dir)
 
     lines_lenght_ = subprocess.getoutput('wc -l ./indexes.txt')
@@ -162,52 +172,52 @@ def collect(runner_id, **kwargs):
     for line_index in range(lines_lenght):
         if line_index < start_from + 1:
             continue
-            
+
         line = index_file.readline()
 
         download_webpage_data_as_text(line, line_index, work_dir)
-            
+
         if line_index != 0 and line_index % save_on == 0 or line_index == lines_lenght - 1:
             save_data(runner_id, batch_name, data_dir, work_dir, line_index, lines_lenght, start_date, start_from)
 
     index_file.close()
 
-
     system('rm {}/indexes.txt'.format(work_dir))
     system('rm {}/text/*'.format(work_dir))
-    
+
     df = pd.read_csv('{}/register-{}.csv'.format(data_dir, runner_id), index_col=None)
     index = df[(df.runner_id == runner_id) & (df.status == 'running')].index[0]
     df.at[index, 'status'] = 'complated'
-    
+
     batch_name = get_new_batch(data_dir, index_dir, lang)
-    
-    df = df.append({"runner_id": runner_id, "status": 'running', "collected_lines_count": 0, "batch_name": batch_name}, ignore_index=True)
+
+    df = df.append({"runner_id": runner_id, "status": 'running', "collected_lines_count": 0, "batch_name": batch_name},
+                   ignore_index=True)
     df.to_csv('{}/register-{}.csv'.format(data_dir, runner_id), index=None)
-    
-    collect(runner_id, 
-            lang = lang, 
-            index_dir = index_dir, 
-            data_dir = data_dir, 
-            work_dir = work_dir, 
-            batch_name = batch_name,
-            start_from = 0,
-            save_on = save_on)
+
+    collect(runner_id,
+            lang=lang,
+            index_dir=index_dir,
+            data_dir=data_dir,
+            work_dir=work_dir,
+            batch_name=batch_name,
+            start_from=0,
+            save_on=save_on)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Collect Data From CommonCrawl')
-    parser.add_argument('--runner_id', type=int, help='Runner collecting the data', required=True )
-    parser.add_argument('--lang', help='Runner collecting the data', default = 'hye')
+    parser.add_argument('--runner_id', type=int, help='Runner collecting the data', required=True)
+    parser.add_argument('--lang', help='Runner collecting the data', default='hye')
     parser.add_argument('--index_dir', default='/content/drive/MyDrive/commoncrawl')
     parser.add_argument('--data_dir', default='/content/drive/MyDrive/commoncrawl-data')
     parser.add_argument('--work_dir', default='/content')
     parser.add_argument('--save_on', type=int, default=3000)
 
     args = parser.parse_args()
-    
+
     kwargs = {}
-    for arg_name in [ arg_name for arg_name in vars(args) if getattr(args, arg_name) and arg_name != 'runner_id']:
+    for arg_name in [arg_name for arg_name in vars(args) if getattr(args, arg_name) and arg_name != 'runner_id']:
         kwargs[arg_name] = getattr(args, arg_name)
-        
+
     collect(args.runner_id, **kwargs)
