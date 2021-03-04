@@ -1,15 +1,9 @@
-import os
-from multiprocessing import Pool, TimeoutError
+import multiprocessing as mp
+from tools import main_loop
 
-from tqdm import tqdm
 import pandas as pd
-from tools import (download_gzip, extract_gzip,
-                   cdx_url_generator,
-                   parse_index_file_by_language, chunk_index, main_loop)
-# import CC indexes
 from data.indexes import month_indexes
-
-pool = Pool(2)
+import argparse
 
 col_names = [
     "cc",
@@ -22,12 +16,23 @@ col_names = [
 
 dataframe = pd.DataFrame(columns=col_names)
 
+parser = argparse.ArgumentParser("CC handler processor")
+parser.add_argument("--subs",
+                    default=1,
+                    help="Number of multiprocess.",
+                    type=int)
+
+args = parser.parse_args()
+subs = args.subs
+num_workers = mp.cpu_count()
+
+if subs >= num_workers:
+    print("Reduce the size of processes and try again")
+    exit()
+
+pool = mp.Pool(subs)
 
 if __name__ == "__main__":
-    with pool:
-        MAX_COUNT = len(month_indexes)
-        tqdm.write(str(month_indexes))
-
-        for result in tqdm(pool.imap(main_loop, month_indexes), total=MAX_COUNT, desc="CC-index"):
-            dataframe = dataframe.append(result, ignore_index=True)
-            dataframe.to_csv('data/result.csv', index=False)
+    main_loop(month_indexes[0], pool)
+    # for month_index in month_indexes[:1]:
+    #     main_loop(month_index, pool)
