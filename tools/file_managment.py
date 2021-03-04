@@ -73,7 +73,7 @@ def download_gzip(gzip_url, folder_path='data/'):
         return file_path, file_name
 
 
-def extract_gzip(gzip_file, out_file_name=None, gzip_folder_path="data/", folder_path="data/", remove_condition=True):
+def extract_gzip(gzip_file, out_file_name=None, folder_path="data/", remove_condition=True):
     # gzip_path = os.path.join(gzip_folder_path, gzip_file)
     # !!! needs optimization
     gzip_path = os.path.realpath(gzip_file).strip()
@@ -104,7 +104,7 @@ def lines_in_file(file_path):
 
     elif platform == "win32":
         with open(file_path) as f:
-            result = sum(1 for line in tqdm(f, desc=f"Count for {file_path}"))
+            result = sum(1 for _ in tqdm(f, desc=f"Count for {file_path}"))
 
     return result
 

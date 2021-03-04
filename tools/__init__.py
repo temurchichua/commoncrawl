@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 import requests
 
@@ -9,6 +10,7 @@ from warcio.archiveiterator import ArchiveIterator
 
 from .html2text import html_to_text
 from tools.file_managment import file_downloader, download_gzip, lines_in_file, extract_gzip, save_file
+from .slacker import post_to_slack
 
 BASE_URL = 'https://commoncrawl.s3.amazonaws.com/'
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -23,9 +25,13 @@ col_names = [
 ]
 
 
+def current_time():
+    return time.strftime("%H:%M:%S", time.localtime())
+
+
 def warc_index_handler(warc_index, source_file):
     warc_url = BASE_URL + warc_index['filename']
-    from_stream(warc_url, filename=warc_index['digest'], file_path="data/"+source_file)
+    from_stream(warc_url, filename=warc_index['digest'], file_path="data/" + source_file)
 
 
 def from_stream(warc_url, filename, file_path=None):
@@ -88,9 +94,17 @@ def parse_index_file_by_language(source_file, pool, remove_condition=True):
 
 def main_loop(month_index, pool):
     # !!!!!!! this needs optimization !!!!!!!!
+    cc_start = time.time()
+    message = f"Started working on CC-{month_index} at {current_time()}"
+    tqdm.write(message)
+    post_to_slack(message)
     for step in range(0, 300):
-        tqdm.write(f"Started working on cdx-index: {month_index}")
         current_chunk = chunk_index(step)
+        # time reporting
+        cdx_start = time.time()
+        message = f"Started working on cdx-{current_chunk} at {current_time()}"
+        tqdm.write(message)
+        post_to_slack(message)
         # cdx_index object outline
         cdx_index = {
             "cc": month_index,
@@ -106,9 +120,18 @@ def main_loop(month_index, pool):
         # extracting data
         file_path = extract_gzip(*gzip_file, folder_path=cdx_index['directory'])
         # returns warc_index for specific language. def. language = "kat"
+
         parse_index_file_by_language(file_path, pool)
 
-        return f"✔ {month_index} is done"
+        cdx_end = cdx_start - time.time()
+        message = f"Ended working on cdx-{current_chunk} at {current_time()} | {cdx_end}sec"
+        tqdm.write(message)
+        post_to_slack(message)
+
+    message = f"✔ {month_index} is done at {current_time}"
+    tqdm.write(message)
+    post_to_slack(message)
+    return message
 
 
 if __name__ == "__main__":
