@@ -110,7 +110,6 @@ def lines_in_file(file_path):
 
 
 def save_file(contents, location="demo.txt"):
-    print(location)
     with open(location, 'a', encoding='utf-8') as f:
         f.write(contents)
 

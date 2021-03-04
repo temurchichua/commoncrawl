@@ -29,21 +29,18 @@ def warc_index_handler(warc_index, source_file):
 
 
 def from_stream(warc_url, filename, file_path=None):
-    target_n = 0
     if file_path is None:
         file_path = os.path.join(BASE_DIR, f"{filename}.txt")
     else:
         file_path = os.path.join(file_path, f"text.txt")
     resp = requests.get(warc_url, stream=True)
 
-    for record in tqdm(ArchiveIterator(resp.raw, arc2warc=True), desc=f"Processing {filename}"):
+    for record in ArchiveIterator(resp.raw, arc2warc=True):
         if record.rec_type == 'response':
             if record.http_headers.get_header('Content-Type') == 'text/html':
                 html_string = record.content_stream().read()
                 result = html_to_text(html_string, language="ka")
                 if result:
-                    target_n += 1
-                    tqdm.write(f"Target in {filename}: {target_n}")
                     save_file(result, file_path)
 
 
@@ -92,7 +89,7 @@ def parse_index_file_by_language(source_file, pool, remove_condition=True):
 def main_loop(month_index, pool):
     # !!!!!!! this needs optimization !!!!!!!!
     for step in range(0, 300):
-        tqdm.write(f"cdx-index: {month_index}")
+        tqdm.write(f"Started working on cdx-index: {month_index}")
         current_chunk = chunk_index(step)
         # cdx_index object outline
         cdx_index = {
