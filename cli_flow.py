@@ -1,20 +1,9 @@
 import multiprocessing as mp
-from tools import main_loop
+from tools import main_loop, notify
 
-import pandas as pd
 from data.indexes import month_indexes
 import argparse
 
-col_names = [
-    "cc",
-    "cdx",
-    "directory",
-    "download_url",
-    "size",
-    "urls"
-]
-
-dataframe = pd.DataFrame(columns=col_names)
 
 parser = argparse.ArgumentParser("CC handler processor")
 parser.add_argument("--subs",
@@ -30,9 +19,11 @@ if subs >= num_workers:
     print("Reduce the size of processes and try again")
     exit()
 
-pool = mp.Pool(subs)
 
 if __name__ == "__main__":
+    pool = mp.Pool(subs)
+    message = f"Started new Work with {subs} processes"
+    notify(message)
     main_loop(month_indexes[0], pool)
     # for month_index in month_indexes[:1]:
     #     main_loop(month_index, pool)

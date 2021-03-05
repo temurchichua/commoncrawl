@@ -43,6 +43,7 @@ def html_to_text(html_string, sequence=False, separator="\n", language=None, _ht
             returns whole text, where lines are separated with separators
 
     Args:
+        _html (bool):
         html_string (str): standard HTML document
         sequence (bool, optional): return type indicator. Defaults to False
         separator (str, optional): separator between processed lines
@@ -51,15 +52,12 @@ def html_to_text(html_string, sequence=False, separator="\n", language=None, _ht
         string | list: preprocessed textarea out of html
     """
     if _html:
+        # Raises ParserError if unsupported or empty html_string
         try:
-            # Raises ParserError if unsupported or empty html_string
-            try:
-                html_string = fix_encoding(html_string)
-            except Exception:
-                pass
+            html_string = fix_encoding(html_string)
             sp = html.fromstring(html_string)
-        except ParserError:
-            return None
+        except Exception:
+            pass
 
         cleaner = html.clean.Cleaner()  # Init cleaner
         cleaner.javascript = True  # This is True because we want to activate the javascript filter

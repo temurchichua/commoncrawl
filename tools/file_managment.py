@@ -69,7 +69,6 @@ def download_gzip(gzip_url, folder_path='data/'):
         tqdm.write(f"File {file_name} has been found")
         return file_path, file_name
     try:
-        tqdm.write(f'Downloading file: {file_name}')
         file_downloader(url=gzip_url, save_dir=folder_path)
     except error.HTTPError as e:
         tqdm.write(e)
@@ -118,7 +117,7 @@ def lines_in_file(file_path):
 
 def save_file(contents, location="demo.txt"):
     with open(location, 'a', encoding='utf-8') as f:
-        f.write(contents)
+        f.write(contents+"\n")
 
 # if base_name.endswith("tar.gz"):
 #     tar = tarfile.open(base_name, "r:gz")

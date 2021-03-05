@@ -40,6 +40,11 @@ def cdx_url_generator(cdx_index, month_index):
     return chunk_url
 
 
+def notify(message):
+    tqdm.write(message)
+    post_to_slack(message)
+
+
 def language_in_index(language, index, strict=True):
     if strict:
         # pages with strictly on argument language content
@@ -49,23 +54,21 @@ def language_in_index(language, index, strict=True):
         return '"languages"' in index and language in index.split()[-1]
 
 
-def get_wet(warc_url, file_name, file_dir=None):
+def get_wet(warc_url, file_dir=None):
     wet_url = warc_url.replace('/warc/', '/wet/').replace('warc.gz', 'warc.wet.gz')
-
     if file_dir is None:
-        file_path = os.path.join(BASE_DIR, f"{file_name}.txt")
         file_dir = BASE_DIR
-    else:
-        file_path = os.path.join(file_dir, f"text.txt")
-
+    result_path = os.path.join(file_dir, f"text.txt")
+    num_of_line = 0
     file_path = gzip_to_file(wet_url, file_dir)
-
-    total = lines_in_file(file_path)
-    with open(file_path) as f:
-        for line in f:
-            result = html_to_text(line, language="ka")
+    with open(file_path, encoding="utf-8") as f:
+        for line in tqdm(f, total=lines_in_file(file_path), desc=f"Iterating Over: {file_path}"):
+            result = html_to_text(line, language="ka", _html=True)
             if result:
-                save_file(result, file_dir + '/demo.txt')
+                num_of_line += 1
+                # tqdm.write(f"[{num_of_line}] lines in {file_path}")
+                save_file(result, result_path)
+    notify(f"[{num_of_line}] lines in {file_path}")
 
 
 def from_stream(warc_url, filename, file_path=None):
@@ -93,17 +96,16 @@ def cdx_line_handler(index_line, _type="wet"):
         if _type == "warc":
             from_stream(warc_url, filename=warc['digest'], file_path="data/" + source_folder)
         if _type == "wet":
-            get_wet(warc_url, warc['digest'], file_dir="data/" + source_folder)
+            get_wet(warc_url, file_dir="data/" + source_folder)
 
 
 def parse_index_file_by_language(source_file, pool, remove_condition=True):
     with open(source_file) as cdx_file:
         total = lines_in_file(source_file)
-        i = 0
+
         with pool:
             for _ in tqdm(pool.imap(cdx_line_handler, cdx_file), total=total, desc="Parallel Process"):
-                i += 1
-                tqdm.write(f"- ✔ Finished the file the line {i} | {total}")
+                pass
 
     tqdm.write(f"- ✔ Finished processing {source_file}")
     # Remove leftover cdx file
@@ -116,16 +118,16 @@ def main_loop(month_index, pool):
     # !!!!!!! this needs optimization !!!!!!!!
     cc_start = time.time()
     message = f"Started working on CC-{month_index} at {current_time()}"
-    tqdm.write(message)
-    post_to_slack(message)
+    notify(message)
+
     for step in range(0, 300):
         current_chunk = chunk_index(step)
         # time reporting
         cdx_start = time.time()
         message = f"Started working on cdx-{current_chunk} at {current_time()}"
-        tqdm.write(message)
-        post_to_slack(message)
+        notify(message)
         # cdx_index object outline
+
         cdx_index = {
             "cc": month_index,
             "cdx": f"cdx-{current_chunk}",
@@ -142,12 +144,11 @@ def main_loop(month_index, pool):
 
         cdx_end = cdx_start - time.time()
         message = f"Ended working on cdx-{current_chunk} at {current_time()} | {cdx_end}sec"
-        tqdm.write(message)
-        post_to_slack(message)
+        notify(message)
 
-    message = f"✔ {month_index} is done at {current_time}"
-    tqdm.write(message)
-    post_to_slack(message)
+    cc_end = cc_start - time.time()
+    message = f"✔ {month_index} is done at {current_time} | {cc_end}"
+    notify(message)
     return message
 
 
