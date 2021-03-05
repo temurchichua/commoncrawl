@@ -109,8 +109,11 @@ def lines_in_file(file_path):
         result = int(subprocess.check_output(['wc', '-l', file_path]).split()[0])
 
     elif platform == "win32":
-        with open(file_path) as f:
-            result = sum(1 for _ in tqdm(f, desc=f"Count for {file_path}"))
+        try:
+            with open(file_path) as f:
+                result = sum(1 for _ in tqdm(f, desc=f"Count for {file_path}"))
+        except:
+            result = 0
 
     return result
 
