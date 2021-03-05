@@ -33,7 +33,7 @@ class LanguageIdentification:
 LANGUAGE = LanguageIdentification()
 
 
-def html_to_text(html_string, sequence=False, separator="\n", language=None):
+def html_to_text(html_string, sequence=False, separator="\n", language=None, _html=False):
     """
     Description:
         Parse and clear text out of the HTML string
@@ -50,25 +50,29 @@ def html_to_text(html_string, sequence=False, separator="\n", language=None):
     Returns:
         string | list: preprocessed textarea out of html
     """
-    try:
-        # Raises ParserError if unsupported or empty html_string
+    if _html:
         try:
-            html_string = fix_encoding(html_string)
+            # Raises ParserError if unsupported or empty html_string
+            try:
+                html_string = fix_encoding(html_string)
+            except Exception:
+                pass
+            sp = html.fromstring(html_string)
+        except ParserError:
+            return None
+
+        cleaner = html.clean.Cleaner()  # Init cleaner
+        cleaner.javascript = True  # This is True because we want to activate the javascript filter
+        cleaner.style = True  # This is True because we want to activate the styles & stylesheet filter
+
+        try:
+            sp = cleaner.clean_html(sp)
+            result = sp.text_content()
         except Exception:
-            pass
-        sp = html.fromstring(html_string)
-    except ParserError:
-        return None
+            return None
+    else:
+        result = html_string
 
-    cleaner = html.clean.Cleaner()  # Init cleaner
-    cleaner.javascript = True  # This is True because we want to activate the javascript filter
-    cleaner.style = True  # This is True because we want to activate the styles & stylesheet filter
-
-    try:
-        sp = cleaner.clean_html(sp)
-        result = sp.text_content()
-    except Exception:
-        return None
     clear_list = list()
     for line in result.split("\n"):
         split_line = line.strip()

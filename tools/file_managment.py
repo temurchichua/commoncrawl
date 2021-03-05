@@ -38,6 +38,14 @@ def file_downloader(url, save_dir):
         urlretrieve(url, filename=os.path.join(save_dir, filename), reporthook=t.update_to)
 
 
+def gzip_to_file(file_url, dir_path):
+    # downloading gzip
+    gzip_file = download_gzip(file_url, folder_path=dir_path)
+    # extracting data
+    file_path = extract_gzip(*gzip_file, folder_path=dir_path)
+    return file_path
+
+
 def download_gzip(gzip_url, folder_path='data/'):
     """
     Downloads gzip file and stores it locally
@@ -57,7 +65,6 @@ def download_gzip(gzip_url, folder_path='data/'):
 
     # generate local path for file
     file_path = os.path.join(folder_path, base_name).strip()
-    print(file_path)
     if os.path.exists(file_path):
         tqdm.write(f"File {file_name} has been found")
         return file_path, file_name

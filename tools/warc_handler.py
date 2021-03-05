@@ -4,10 +4,14 @@ import time
 from pprint import pprint
 
 from tqdm import tqdm
-from tools import from_stream
+from tools import get_wet
 
 BASE_URL = 'https://commoncrawl.s3.amazonaws.com/'
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+
+
 
 if __name__ == "__main__":
     start = time.time()
@@ -22,8 +26,9 @@ if __name__ == "__main__":
     pprint(index)
 
     url = BASE_URL + index['filename']
-
-    from_stream(url, index['digest'])
+    get_wet(url, index['digest'])
 
     end = time.time()
     tqdm.write(str(end - start))
+
+# print(f"wet_url: {wet_url}, \nfile_dir: {file_dir}, \nfile_name: {file_name}, \nfile_path: {file_path}")
