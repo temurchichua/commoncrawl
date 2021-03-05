@@ -18,7 +18,7 @@ def get_credentials(credentials):
 def post_to_slack(message, credentials=credentials):
     data = {'text': message}
     url = get_credentials(credentials)
-    requests.post(url, json=data, verify=False)
+    requests.post(url, json=data)
 
 
 if __name__ == '__main__':

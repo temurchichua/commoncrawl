@@ -2,6 +2,7 @@
 env/
 venv/
 !*/data/indexes.py
+data/
 tools/models/lid.176.bin
 lid.176.bin
 __pycache__
