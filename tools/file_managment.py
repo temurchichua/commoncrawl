@@ -38,6 +38,14 @@ def file_downloader(url, save_dir):
         urlretrieve(url, filename=os.path.join(save_dir, filename), reporthook=t.update_to)
 
 
+def gzip_to_file(file_url, dir_path):
+    # downloading gzip
+    gzip_file = download_gzip(file_url, folder_path=dir_path)
+    # extracting data
+    file_path = extract_gzip(*gzip_file, folder_path=dir_path)
+    return file_path
+
+
 def download_gzip(gzip_url, folder_path='data/'):
     """
     Downloads gzip file and stores it locally
@@ -57,12 +65,10 @@ def download_gzip(gzip_url, folder_path='data/'):
 
     # generate local path for file
     file_path = os.path.join(folder_path, base_name).strip()
-    print(file_path)
     if os.path.exists(file_path):
         tqdm.write(f"File {file_name} has been found")
         return file_path, file_name
     try:
-        tqdm.write(f'Downloading file: {file_name}')
         file_downloader(url=gzip_url, save_dir=folder_path)
     except error.HTTPError as e:
         tqdm.write(e)
@@ -103,15 +109,18 @@ def lines_in_file(file_path):
         result = int(subprocess.check_output(['wc', '-l', file_path]).split()[0])
 
     elif platform == "win32":
-        with open(file_path) as f:
-            result = sum(1 for _ in tqdm(f, desc=f"Count for {file_path}"))
+        try:
+            with open(file_path) as f:
+                result = sum(1 for _ in tqdm(f, desc=f"Count for {file_path}"))
+        except:
+            result = 0
 
     return result
 
 
 def save_file(contents, location="demo.txt"):
     with open(location, 'a', encoding='utf-8') as f:
-        f.write(contents)
+        f.write(contents+"\n")
 
 # if base_name.endswith("tar.gz"):
 #     tar = tarfile.open(base_name, "r:gz")

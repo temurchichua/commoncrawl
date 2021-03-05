@@ -9,7 +9,7 @@ from tqdm import tqdm
 from warcio.archiveiterator import ArchiveIterator
 
 from .html2text import html_to_text
-from tools.file_managment import file_downloader, download_gzip, lines_in_file, extract_gzip, save_file
+from tools.file_managment import file_downloader, lines_in_file, save_file, gzip_to_file
 from .slacker import post_to_slack
 
 BASE_URL = 'https://commoncrawl.s3.amazonaws.com/'
@@ -29,9 +29,46 @@ def current_time():
     return time.strftime("%H:%M:%S", time.localtime())
 
 
-def warc_index_handler(warc_index, source_file):
-    warc_url = BASE_URL + warc_index['filename']
-    from_stream(warc_url, filename=warc_index['digest'], file_path="data/" + source_file)
+def chunk_index(n):
+    chunk = str(n)
+    index = (5 - len(chunk)) * "0" + chunk
+    return index
+
+
+def cdx_url_generator(cdx_index, month_index):
+    chunk_url = f"{BASE_URL}cc-index/collections/CC-MAIN-{month_index}/indexes/cdx-{cdx_index}.gz "
+    return chunk_url
+
+
+def notify(message):
+    tqdm.write(message)
+    post_to_slack(message)
+
+
+def language_in_index(language, index, strict=True):
+    if strict:
+        # pages with strictly on argument language content
+        return '"languages"' in index and f'"{language}"' in index.split()[-1]
+    else:
+        # pages with content on argument language and different languages - might be noisy
+        return '"languages"' in index and language in index.split()[-1]
+
+
+def get_wet(warc_url, file_dir=None):
+    wet_url = warc_url.replace('/warc/', '/wet/').replace('warc.gz', 'warc.wet.gz')
+    if file_dir is None:
+        file_dir = BASE_DIR
+    result_path = os.path.join(file_dir, f"text.txt")
+    num_of_line = 0
+    file_path = gzip_to_file(wet_url, file_dir)
+    with open(file_path, encoding="utf-8") as f:
+        for line in tqdm(f, total=lines_in_file(file_path), desc=f"Iterating Over: {file_path}"):
+            result = html_to_text(line, language="ka", _html=True)
+            if result:
+                num_of_line += 1
+                # tqdm.write(f"[{num_of_line}] lines in {file_path}")
+                save_file(result, result_path)
+    notify(f"[{num_of_line}] lines in {file_path}")
 
 
 def from_stream(warc_url, filename, file_path=None):
@@ -50,39 +87,24 @@ def from_stream(warc_url, filename, file_path=None):
                     save_file(result, file_path)
 
 
-def chunk_index(n):
-    chunk = str(n)
-    index = (5 - len(chunk)) * "0" + chunk
-    return index
-
-
-def cdx_url_generator(cdx_index, month_index):
-    chunk_url = f"{BASE_URL}cc-index/collections/CC-MAIN-{month_index}/indexes/cdx-{cdx_index}.gz "
-    return chunk_url
-
-
-def language_in_index(language, index, strict=True):
-    if strict:
-        # pages with strictly on argument language content
-        return '"languages"' in index and f'"{language}"' in index.split()[-1]
-    else:
-        # pages with content on argument language and different languages - might be noisy
-        return '"languages"' in index and language in index.split()[-1]
-
-
-def cdx_line_handler(index_line):
+def cdx_line_handler(index_line, _type="wet"):
     if language_in_index("kat", index_line):
         # returns index of warc file as dictionary
         warc = json.loads('{"url":' + index_line.split('{"url":')[1])
         source_folder = "-".join(warc['filename'].split("/")[1].split("-")[2:4])
-        warc_index_handler(warc, source_folder)
+        warc_url = BASE_URL + warc['filename']
+        if _type == "warc":
+            from_stream(warc_url, filename=warc['digest'], file_path="data/" + source_folder)
+        if _type == "wet":
+            get_wet(warc_url, file_dir="data/" + source_folder)
 
 
 def parse_index_file_by_language(source_file, pool, remove_condition=True):
     with open(source_file) as cdx_file:
         total = lines_in_file(source_file)
+
         with pool:
-            for _ in tqdm(pool.imap(cdx_line_handler, cdx_file), total=total):
+            for _ in tqdm(pool.imap(cdx_line_handler, cdx_file), total=total, desc="Parallel Process"):
                 pass
 
     tqdm.write(f"- ✔ Finished processing {source_file}")
@@ -96,16 +118,16 @@ def main_loop(month_index, pool):
     # !!!!!!! this needs optimization !!!!!!!!
     cc_start = time.time()
     message = f"Started working on CC-{month_index} at {current_time()}"
-    tqdm.write(message)
-    post_to_slack(message)
+    notify(message)
+
     for step in range(0, 300):
         current_chunk = chunk_index(step)
         # time reporting
         cdx_start = time.time()
         message = f"Started working on cdx-{current_chunk} at {current_time()}"
-        tqdm.write(message)
-        post_to_slack(message)
+        notify(message)
         # cdx_index object outline
+
         cdx_index = {
             "cc": month_index,
             "cdx": f"cdx-{current_chunk}",
@@ -115,27 +137,21 @@ def main_loop(month_index, pool):
             "urls": list()
         }
 
-        # downloading gzip
-        gzip_file = download_gzip(cdx_index['download_url'], folder_path=cdx_index['directory'])
-        # extracting data
-        file_path = extract_gzip(*gzip_file, folder_path=cdx_index['directory'])
-        # returns warc_index for specific language. def. language = "kat"
+        file_path = gzip_to_file(cdx_index['download_url'], cdx_index['directory'])
 
+        # returns warc_index for specific language. def. language = "kat"
         parse_index_file_by_language(file_path, pool)
 
         cdx_end = cdx_start - time.time()
         message = f"Ended working on cdx-{current_chunk} at {current_time()} | {cdx_end}sec"
-        tqdm.write(message)
-        post_to_slack(message)
+        notify(message)
 
-    message = f"✔ {month_index} is done at {current_time}"
-    tqdm.write(message)
-    post_to_slack(message)
+    cc_end = cc_start - time.time()
+    message = f"✔ {month_index} is done at {current_time} | {cc_end}"
+    notify(message)
     return message
 
 
 if __name__ == "__main__":
     #  parse_index_file_by_language("D:/PycharmProjects/commoncrawl/data/2021-04/cdx-00000")
     file_url = "https://commoncrawl.s3.amazonaws.com/crawl-data/CC-MAIN-2021-04/cc-index.paths.gz"
-    file = download_gzip(file_url)
-    extract_gzip(*file)
