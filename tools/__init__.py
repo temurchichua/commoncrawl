@@ -62,7 +62,7 @@ def get_wet(warc_url, file_dir=None):
     num_of_line = 0
     file_path = gzip_to_file(wet_url, file_dir)
     with open(file_path, encoding="utf-8") as f:
-        for line in tqdm(f, total=lines_in_file(file_path), desc=f"Iterating Over: {file_path}"):
+        for line in f:
             result = html_to_text(line, language="ka", _html=True)
             if result:
                 num_of_line += 1
