@@ -4,7 +4,7 @@ import time
 from pprint import pprint
 
 from tqdm import tqdm
-from tools import get_wet
+from . import get_wet
 
 BASE_URL = 'https://commoncrawl.s3.amazonaws.com/'
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

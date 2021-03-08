@@ -54,7 +54,7 @@ def language_in_index(language, index, strict=True):
         return '"languages"' in index and language in index.split()[-1]
 
 
-def get_wet(warc_url, pool, file_dir=None):
+def get_wet(warc_url, file_dir=None):
     wet_url = warc_url.replace('/warc/', '/wet/').replace('warc.gz', 'warc.wet.gz')
     file_path = gzip_to_file(wet_url, file_dir)
     total_lines = lines_in_file(file_path)
