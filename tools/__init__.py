@@ -54,15 +54,16 @@ def language_in_index(language, index, strict=True):
         return '"languages"' in index and language in index.split()[-1]
 
 
-def get_wet(warc_url, file_dir=None):
+def get_wet(warc_url, pool=None, file_dir=None):
     wet_url = warc_url.replace('/warc/', '/wet/').replace('warc.gz', 'warc.wet.gz')
     file_path = gzip_to_file(wet_url, file_dir)
     total_lines = lines_in_file(file_path)
     with open(file_path, encoding="utf-8") as infile:
-        # for _ in tqdm(pool.imap(html_to_text, infile), total=total_lines, desc="Parallel Process"):
-        #     pass
-        for line in tqdm(infile, total=total_lines, desc="Parallel Process"):
-            html_to_text(line)
+        with pool:
+            for _ in tqdm(pool.imap(html_to_text, infile), total=total_lines, desc="Parallel Process"):
+                pass
+        # for line in tqdm(infile, total=total_lines, desc="Parallel Process"):
+        #     html_to_text(line)
 
     os.remove(file_path)
     tqdm.write("- ✔ Removed the leftover wet")
