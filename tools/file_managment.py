@@ -92,7 +92,7 @@ def extract_gzip(gzip_file, out_file_name=None, folder_path="data/", remove_cond
     tqdm.write(f"🗄️ Extracting {gzip_path} > {result_path}")
     with gzip.open(gzip_path, 'rb') as f_in:
         with open(result_path, 'wb') as f_out:
-            tqdm.write(f"⚙ Copying file(s) [might take a while, grab a coffee ☕ ]")
+            # tqdm.write(f"⚙ Copying file(s) [might take a while, grab a coffee ☕ ]")
             shutil.copyfileobj(f_in, f_out)
             tqdm.write("- ✔ Done")
 

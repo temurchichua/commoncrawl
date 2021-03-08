@@ -5,7 +5,7 @@ import fasttext
 import os
 from ftfy import fix_encoding
 
-from .file_managment import file_downloader
+from .file_managment import file_downloader, save_file
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -90,7 +90,7 @@ def html_to_text(html_string, sequence=False, separator="\n", language="ka", _ht
         return clear_list
 
     else:
-        return separator.join(clear_list)
+        save_file(separator.join(clear_list))
 
 
 if __name__ == "__main__":
