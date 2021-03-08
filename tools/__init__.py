@@ -58,12 +58,13 @@ def get_wet(warc_url, pool=None, file_dir=None):
     wet_url = warc_url.replace('/warc/', '/wet/').replace('warc.gz', 'warc.wet.gz')
     file_path = gzip_to_file(wet_url, file_dir)
     total_lines = lines_in_file(file_path)
-    with open(file_path, encoding="utf-8") as infile:
+    with open(file_path, 'r', encoding="utf-8") as infile:
         # with pool:
-        #     for _ in tqdm(pool.imap(html_to_text, infile), total=total_lines, desc="Parallel Process"):
+        #     for _ in tqdm(pool.imap_unordered(html_to_text, infile), total=total_lines, desc="Parallel Process"):
         #         pass
-        for line in infile:
-            html_to_text(line)
+        # for line in infile:
+        #     html_to_text(line)
+        html_to_text(infile.read())
 
     os.remove(file_path)
     tqdm.write("- ✔ Removed the leftover wet")
@@ -103,7 +104,7 @@ def parse_index_file_by_language(source_file, pool, remove_condition=True):
         # for index_line in tqdm(cdx_file, total=total, desc="Processing CDX"):
         #     cdx_line_handler(index_line, pool)
         with pool:
-            for _ in tqdm(pool.imap(cdx_line_handler, cdx_file), total=total, desc="Parallel Process"):
+            for _ in tqdm(pool.imap_unordered(cdx_line_handler, cdx_file), total=total, desc="Parallel Process"):
                 pass
 
     tqdm.write(f"- ✔ Finished processing {source_file}")

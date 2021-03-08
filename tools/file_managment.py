@@ -46,7 +46,7 @@ def gzip_to_file(file_url, dir_path):
     return file_path
 
 
-def download_gzip(gzip_url, folder_path='data/'):
+def     download_gzip(gzip_url, folder_path='data/'):
     """
     Downloads gzip file and stores it locally
     Args:

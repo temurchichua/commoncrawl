@@ -85,12 +85,12 @@ def html_to_text(html_string, sequence=False, separator="\n", language="ka", _ht
                             continue
                     else:
                         clear_list.append(sample)
+    if clear_list:
+        if sequence:
+            return clear_list
 
-    if sequence:
-        return clear_list
-
-    else:
-        save_file(separator.join(clear_list))
+        else:
+            save_file(separator.join(clear_list))
 
 
 if __name__ == "__main__":
