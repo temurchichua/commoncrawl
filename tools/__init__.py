@@ -54,20 +54,20 @@ def language_in_index(language, index, strict=True):
         return '"languages"' in index and language in index.split()[-1]
 
 
-def get_wet(warc_url, file_dir=None):
+def get_wet(warc_url, pool, file_dir=None):
     wet_url = warc_url.replace('/warc/', '/wet/').replace('warc.gz', 'warc.wet.gz')
     if file_dir is None:
         file_dir = BASE_DIR
     result_path = os.path.join(file_dir, f"text.txt")
     num_of_line = 0
     file_path = gzip_to_file(wet_url, file_dir)
-    with open(file_path, encoding="utf-8") as f:
-        for line in f:
-            result = html_to_text(line, language="ka", _html=True)
-            if result:
-                num_of_line += 1
-                # tqdm.write(f"[{num_of_line}] lines in {file_path}")
-                save_file(result, result_path)
+    total_lines = lines_in_file(file_path)
+    with open(file_path, encoding="utf-8") as infile, open(result_path, 'a', encoding='utf-8') as outfile:
+        for processed_line in tqdm(pool.imap(html_to_text, infile), total=total_lines, desc="Parallel Process"):
+            outfile.write(processed_line)
+
+    os.remove(file_path)
+    tqdm.write("- ✔ Removed the leftover cdx")
     notify(f"[{num_of_line}] lines in {file_path}")
 
 
@@ -87,7 +87,7 @@ def from_stream(warc_url, filename, file_path=None):
                     save_file(result, file_path)
 
 
-def cdx_line_handler(index_line, _type="wet"):
+def cdx_line_handler(index_line, pool, _type="wet"):
     if language_in_index("kat", index_line):
         # returns index of warc file as dictionary
         warc = json.loads('{"url":' + index_line.split('{"url":')[1])
@@ -96,16 +96,13 @@ def cdx_line_handler(index_line, _type="wet"):
         if _type == "warc":
             from_stream(warc_url, filename=warc['digest'], file_path="data/" + source_folder)
         if _type == "wet":
-            get_wet(warc_url, file_dir="data/" + source_folder)
+            get_wet(warc_url, pool, file_dir="data/" + source_folder)
 
 
 def parse_index_file_by_language(source_file, pool, remove_condition=True):
     with open(source_file) as cdx_file:
-        total = lines_in_file(source_file)
-
-        with pool:
-            for _ in tqdm(pool.imap(cdx_line_handler, cdx_file), total=total, desc="Parallel Process"):
-                pass
+        for index_line in cdx_file:
+            cdx_line_handler(index_line, pool)
 
     tqdm.write(f"- ✔ Finished processing {source_file}")
     # Remove leftover cdx file

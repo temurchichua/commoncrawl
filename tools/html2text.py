@@ -1,6 +1,5 @@
 from lxml import html
 from lxml.html.clean import Cleaner
-from lxml.etree import ParserError
 
 import fasttext
 import os
@@ -33,7 +32,7 @@ class LanguageIdentification:
 LANGUAGE = LanguageIdentification()
 
 
-def html_to_text(html_string, sequence=False, separator="\n", language=None, _html=False):
+def html_to_text(html_string, sequence=False, separator="\n", language=None, _html=True):
     """
     Description:
         Parse and clear text out of the HTML string
@@ -57,7 +56,7 @@ def html_to_text(html_string, sequence=False, separator="\n", language=None, _ht
             html_string = fix_encoding(html_string)
             sp = html.fromstring(html_string)
         except Exception:
-            pass
+            return None
 
         cleaner = html.clean.Cleaner()  # Init cleaner
         cleaner.javascript = True  # This is True because we want to activate the javascript filter
