@@ -59,11 +59,11 @@ def get_wet(warc_url, pool=None, file_dir=None):
     file_path = gzip_to_file(wet_url, file_dir)
     total_lines = lines_in_file(file_path)
     with open(file_path, encoding="utf-8") as infile:
-        with pool:
-            for _ in tqdm(pool.imap(html_to_text, infile), total=total_lines, desc="Parallel Process"):
-                pass
-        # for line in tqdm(infile, total=total_lines, desc="Parallel Process"):
-        #     html_to_text(line)
+        # with pool:
+        #     for _ in tqdm(pool.imap(html_to_text, infile), total=total_lines, desc="Parallel Process"):
+        #         pass
+        for line in infile:
+            html_to_text(line)
 
     os.remove(file_path)
     tqdm.write("- ✔ Removed the leftover wet")
@@ -85,7 +85,7 @@ def from_stream(warc_url, filename, file_path=None):
                     save_file(result, file_path)
 
 
-def cdx_line_handler(index_line, pool, _type="wet"):
+def cdx_line_handler(index_line, pool=None, _type="wet"):
     if language_in_index("kat", index_line):
         # returns index of warc file as dictionary
         warc = json.loads('{"url":' + index_line.split('{"url":')[1])
@@ -100,8 +100,11 @@ def cdx_line_handler(index_line, pool, _type="wet"):
 def parse_index_file_by_language(source_file, pool, remove_condition=True):
     total = lines_in_file(source_file)
     with open(source_file) as cdx_file:
-        for index_line in tqdm(cdx_file, total=total, desc="Processing CDX"):
-            cdx_line_handler(index_line, pool)
+        # for index_line in tqdm(cdx_file, total=total, desc="Processing CDX"):
+        #     cdx_line_handler(index_line, pool)
+        with pool:
+            for _ in tqdm(pool.imap(cdx_line_handler, cdx_file), total=total, desc="Parallel Process"):
+                pass
 
     tqdm.write(f"- ✔ Finished processing {source_file}")
     # Remove leftover cdx file
