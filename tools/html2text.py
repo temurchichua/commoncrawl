@@ -31,6 +31,10 @@ class LanguageIdentification:
 
 LANGUAGE = LanguageIdentification()
 
+cleaner = html.clean.Cleaner()  # Init cleaner
+cleaner.javascript = True  # This is True because we want to activate the javascript filter
+cleaner.style = True  # This is True because we want to activate the styles & stylesheet filter
+
 
 def html_to_text(html_string, sequence=False, separator="\n", language="ka", _html=True):
     """
@@ -57,10 +61,6 @@ def html_to_text(html_string, sequence=False, separator="\n", language="ka", _ht
             sp = html.fromstring(html_string)
         except Exception:
             return None
-
-        cleaner = html.clean.Cleaner()  # Init cleaner
-        cleaner.javascript = True  # This is True because we want to activate the javascript filter
-        cleaner.style = True  # This is True because we want to activate the styles & stylesheet filter
 
         try:
             sp = cleaner.clean_html(sp)

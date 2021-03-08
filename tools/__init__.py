@@ -9,7 +9,7 @@ from tqdm import tqdm
 from warcio.archiveiterator import ArchiveIterator
 
 from .html2text import html_to_text
-from tools.file_managment import file_downloader, lines_in_file, save_file, gzip_to_file
+from tools.file_managment import file_downloader, lines_in_file, save_file, gzip_to_file, download_gzip
 from .slacker import post_to_slack
 
 BASE_URL = 'https://commoncrawl.s3.amazonaws.com/'
@@ -56,19 +56,16 @@ def language_in_index(language, index, strict=True):
 
 def get_wet(warc_url, pool, file_dir=None):
     wet_url = warc_url.replace('/warc/', '/wet/').replace('warc.gz', 'warc.wet.gz')
-    if file_dir is None:
-        file_dir = BASE_DIR
-    result_path = os.path.join(file_dir, f"text.txt")
-    num_of_line = 0
     file_path = gzip_to_file(wet_url, file_dir)
     total_lines = lines_in_file(file_path)
-    with open(file_path, encoding="utf-8") as infile, open(result_path, 'a', encoding='utf-8') as outfile:
-        for _ in tqdm(pool.imap(html_to_text, infile), total=total_lines, desc="Parallel Process"):
-            pass
+    with open(file_path, encoding="utf-8") as infile:
+        # for _ in tqdm(pool.imap(html_to_text, infile), total=total_lines, desc="Parallel Process"):
+        #     pass
+        for line in tqdm(infile, total=total_lines, desc="Parallel Process"):
+            html_to_text(line)
 
     os.remove(file_path)
     tqdm.write("- ✔ Removed the leftover wet")
-    notify(f"[{num_of_line}] lines in {file_path}")
 
 
 def from_stream(warc_url, filename, file_path=None):
