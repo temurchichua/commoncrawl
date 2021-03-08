@@ -55,19 +55,22 @@ def language_in_index(language, index, strict=True):
 
 
 def get_wet(warc_url, file_dir=None, pool=None):
+    start = time.time()
+
     wet_url = warc_url.replace('/warc/', '/wet/').replace('warc.gz', 'warc.wet.gz')
     file_path = gzip_to_file(wet_url, file_dir)
-    total_lines = lines_in_file(file_path)
+    # total_lines = lines_in_file(file_path)
     with open(file_path, 'r', encoding="utf-8") as infile:
         # with pool:
         #     for _ in tqdm(pool.imap_unordered(html_to_text, infile), total=total_lines, desc="Parallel Process"):
         #         pass
-        # for line in infile:
-        #     html_to_text(line)
-        html_to_text(infile.read())
+        for line in infile:
+            html_to_text(line)
 
     os.remove(file_path)
-    tqdm.write("- ✔ Removed the leftover wet")
+    end = time.time()
+    delta = str((end - start)/60)
+    notify(f"- ✔ finished wet in {delta} min")
 
 
 def from_stream(warc_url, filename, file_path=None):
