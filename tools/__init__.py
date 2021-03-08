@@ -64,10 +64,11 @@ def get_wet(warc_url, pool, file_dir=None):
     total_lines = lines_in_file(file_path)
     with open(file_path, encoding="utf-8") as infile, open(result_path, 'a', encoding='utf-8') as outfile:
         for processed_line in tqdm(pool.imap(html_to_text, infile), total=total_lines, desc="Parallel Process"):
-            outfile.write(processed_line)
+            if processed_line:
+                outfile.write(processed_line)
 
     os.remove(file_path)
-    tqdm.write("- ✔ Removed the leftover cdx")
+    tqdm.write("- ✔ Removed the leftover wet")
     notify(f"[{num_of_line}] lines in {file_path}")
 
 

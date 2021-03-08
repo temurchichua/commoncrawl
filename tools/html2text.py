@@ -32,7 +32,7 @@ class LanguageIdentification:
 LANGUAGE = LanguageIdentification()
 
 
-def html_to_text(html_string, sequence=False, separator="\n", language=None, _html=True):
+def html_to_text(html_string, sequence=False, separator="\n", language="ka", _html=True):
     """
     Description:
         Parse and clear text out of the HTML string
