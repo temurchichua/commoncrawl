@@ -98,7 +98,7 @@ def cdx_line_handler(index_line, pool=None, _type="wet"):
         if _type == "warc":
             from_stream(warc_url, filename=warc['digest'], file_path="data/" + source_folder)
         if _type == "wet":
-            get_wet(warc_url, pool, file_dir="data/" + source_folder)
+            get_wet(warc_url, pool=pool, file_dir="data/" + source_folder)
 
 
 def parse_index_file_by_language(source_file, pool, remove_condition=True):
