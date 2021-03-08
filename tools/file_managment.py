@@ -46,7 +46,7 @@ def gzip_to_file(file_url, dir_path):
     return file_path
 
 
-def     download_gzip(gzip_url, folder_path='data/'):
+def download_gzip(gzip_url, folder_path='data/'):
     """
     Downloads gzip file and stores it locally
     Args:
@@ -120,7 +120,7 @@ def lines_in_file(file_path):
 
 def save_file(contents, location="demo.txt"):
     with open(location, 'a', encoding='utf-8') as f:
-        f.write(contents+"\n")
+        f.write(contents + "\n")
 
 # if base_name.endswith("tar.gz"):
 #     tar = tarfile.open(base_name, "r:gz")

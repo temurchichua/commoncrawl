@@ -69,7 +69,7 @@ def get_wet(warc_url, file_dir=None, pool=None):
 
     os.remove(file_path)
     end = time.time()
-    delta = str((end - start)/60)
+    delta = str((end - start) / 60)
     notify(f"- ✔ finished wet in {delta} min")
 
 
@@ -95,10 +95,11 @@ def cdx_line_handler(index_line, pool=None, _type="wet"):
         warc = json.loads('{"url":' + index_line.split('{"url":')[1])
         source_folder = "-".join(warc['filename'].split("/")[1].split("-")[2:4])
         warc_url = BASE_URL + warc['filename']
-        if _type == "warc":
-            from_stream(warc_url, filename=warc['digest'], file_path="data/" + source_folder)
-        if _type == "wet":
-            get_wet(warc_url, pool=pool, file_dir="data/" + source_folder)
+        if "kat" in warc.get('languages', []):
+            if _type == "warc":
+                from_stream(warc_url, filename=warc['digest'], file_path="data/" + source_folder)
+            if _type == "wet":
+                get_wet(warc_url, pool=pool, file_dir="data/" + source_folder)
 
 
 def parse_index_file_by_language(source_file, pool, remove_condition=True):
@@ -170,7 +171,8 @@ if __name__ == "__main__":
     tqdm.write(index)
 
     url = BASE_URL + index['filename']
-    get_wet(url, index['digest'])
+    if "kat" in index.get('languages', []):
+        get_wet(url, index['digest'])
 
     end = time.time()
     tqdm.write(str(end - start))
